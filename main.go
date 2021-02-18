@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -14,7 +16,7 @@ import (
 	"time"
 )
 
-var ma sync.Map
+var ma sync.Map //存储用户名到行数的映射
 var running sync.WaitGroup
 var enableParallel bool
 
@@ -22,6 +24,30 @@ func init() {
 	enableParallel = true
 	running = sync.WaitGroup{}
 	ma = sync.Map{}
+}
+func shouldEnterDir(p string) bool {
+	name := filepath.Base(p)
+	if len(name) > 0 && name[0] == '.' {
+		return false
+	}
+	if name == "node_modules" {
+		return false
+	}
+	return true
+}
+func shouldEnterFile(p string) bool {
+	isCode := false
+	name := filepath.Base(p)
+	for _, lang := range strings.Fields(".py .go .java .js .cpp") {
+		if strings.HasSuffix(name, lang) {
+			isCode = true
+			break
+		}
+	}
+	if !isCode {
+		return false
+	}
+	return true
 }
 func handleDir(p string) {
 	if enableParallel {
@@ -36,64 +62,86 @@ func handleDir(p string) {
 	}
 	sons, err := ioutil.ReadDir(p)
 	if err != nil {
-		log.Println(err)
+		log.Println("reading dir error", p, err)
 		return
 	}
 	for _, son := range sons {
-		name := son.Name()
-		if len(name) > 0 && name[0] == '.' {
-			continue
-		}
-		if name == "node_modules" {
-			continue
-		}
-		sonPath := path.Join(p, name)
+		sonPath := path.Join(p, son.Name())
 		if son.IsDir() {
-			running.Add(1)
+			if !shouldEnterDir(sonPath) {
+				continue
+			}
 			if enableParallel {
+				running.Add(1)
 				go handleDir(sonPath)
 			} else {
 				handleDir(sonPath)
 			}
 			continue
 		}
-		isCode := false
-		for _, lang := range strings.Fields(".py .go .java .js .cpp") {
-			if strings.HasSuffix(name, lang) {
-				isCode = true
-				break
-			}
-		}
-		if !isCode {
+		if !shouldEnterFile(sonPath) {
 			continue
 		}
 		handleFile(sonPath)
 	}
 }
-func handleFile(p string) {
-	cmd := exec.Command("git", "blame", p)
+func runCommand(name string, args []string, folder string) (*string, *string, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = folder
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Println("处理stdout错误")
-		return
+		return nil, nil, err
+	}
+	if stdout == nil {
+		log.Println("stderr为空")
+		return nil, nil, errors.New("stdout is nil")
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Println("处理stderr错误")
+		return nil, nil, err
+	}
+	if stderr == nil {
+		log.Println("stderr为空")
+		return nil, nil, errors.New("stderr is nil")
 	}
 	defer stdout.Close()
+	defer stderr.Close()
 	err = cmd.Start()
 	if err != nil {
 		log.Println("start command error")
-		return
+		return nil, nil, err
 	}
 	res, err := ioutil.ReadAll(stdout)
 	if err != nil {
-		log.Println("read all content error")
-		return
+		log.Println("read all content error", err)
+		return nil, nil, err
+	}
+	errorInfo, err := ioutil.ReadAll(stderr)
+	if err != nil {
+		log.Println("read stderr error", err)
+		return nil, nil, err
 	}
 	content := string(res)
-	if len(content) == 0 {
-		log.Printf("handle file %v error", p)
+	errorContent := string(errorInfo)
+	return &content, &errorContent, nil
+}
+func handleFile(p string) {
+	content, errorContent, err := runCommand("git", []string{"blame", filepath.Base(p)}, filepath.Dir(p))
+	if err != nil {
+		log.Println("执行命令失败", err)
 		return
 	}
-	processContent(content)
+	if len(*errorContent) != 0 {
+		log.Printf("handle file %v error %v", p, *errorContent)
+		return
+	}
+	if len(*content) == 0 {
+		log.Printf("handle file %v error:no content", p)
+		return
+	}
+	processContent(*content)
 }
 
 func processContent(content string) {
@@ -157,10 +205,6 @@ func run() {
 }
 func main() {
 	timeit(func() {
-		//running.Add(1)
-		//handleDir("xxxxx")
-		//running.Wait()
-		////handleFile("xxxxxx")
 		run()
 		show()
 	})
