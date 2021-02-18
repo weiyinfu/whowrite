@@ -138,7 +138,7 @@ func handleFile(p string) {
 		return
 	}
 	if len(*content) == 0 {
-		log.Printf("handle file %v error:no content", p)
+		//文件可能没有内容
 		return
 	}
 	processContent(*content)
