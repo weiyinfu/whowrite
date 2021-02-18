@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -73,7 +72,6 @@ func handleDir(p string) {
 }
 func handleFile(p string) {
 	cmd := exec.Command("git", "blame", p)
-	cmd.Dir = filepath.Dir(p)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Println("处理stdout错误")
@@ -83,6 +81,7 @@ func handleFile(p string) {
 	err = cmd.Start()
 	if err != nil {
 		log.Println("start command error")
+		return
 	}
 	res, err := ioutil.ReadAll(stdout)
 	if err != nil {
@@ -90,6 +89,10 @@ func handleFile(p string) {
 		return
 	}
 	content := string(res)
+	if len(content) == 0 {
+		log.Printf("handle file %v error", p)
+		return
+	}
 	processContent(content)
 }
 
@@ -98,7 +101,6 @@ func processContent(content string) {
 	if err != nil {
 		panic("compile regex error")
 	}
-	//fmt.Println(content)
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -155,8 +157,10 @@ func run() {
 }
 func main() {
 	timeit(func() {
-		//handleDir("xxxxbes")
-		//handleFile("xxxxxx")
+		//running.Add(1)
+		//handleDir("xxxxx")
+		//running.Wait()
+		////handleFile("xxxxxx")
 		run()
 		show()
 	})
