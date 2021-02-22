@@ -134,6 +134,10 @@ func handleFile(p string) {
 		return
 	}
 	if len(*errorContent) != 0 {
+		if strings.Index(*errorContent, "no such path") != -1 {
+			//如果不在git里面直接continue
+			return
+		}
 		log.Printf("handle file %v error %v", p, *errorContent)
 		return
 	}

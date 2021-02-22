@@ -1,5 +1,12 @@
 # 快速查看代码是谁写的
 
+安装方式
+```sh
+git clone git@github.com:weiyinfu/whowrite.git
+cd whowrite-master
+go install
+```
+
 在有些垃圾公司，考察员工绩效的时候会统计每个员工贡献的代码行数。  
 统计一个Repo每行代码是谁写的，只需要使用git blame命令就可以查看，例如`git blame haha.py`。这个问题其实就转化为迭代一个目录下各个文件代码是谁写的，多次调用git blame。  
 
@@ -15,3 +22,29 @@
 * golang非并发：49秒
 * golang并发：7秒
 * python非并发：35秒
+
+
+# Java中执行命令并获取输出
+
+# Java执行命令并获取输出
+```plain
+public static String run(String cmd) {
+    try {
+        System.out.println(cmd);
+        Process process = Runtime.getRuntime().exec(cmd);
+        BufferedReader cin = new BufferedReader(new InputStreamReader(process.getInputStream(), Config.systemEncoding));
+        StringBuilder builder = new StringBuilder();
+        while (true) {
+            String s = cin.readLine();
+            if (s == null) break;
+            builder.append(s).append('\n');
+        }
+        process.waitFor();
+        System.out.println(builder.toString());
+        return builder.toString();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+```
