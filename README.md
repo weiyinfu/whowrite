@@ -16,10 +16,8 @@ go install
 * 正则表达式从文本中提取想要的信息
 * golang的并发执行
 
-另外，我用python语言也实现了一版，结果发现非并发的python运行得相当快。可能与python中使用了yield有关。
-
 我在一个10w行的Repo中测试性能，得到以下结果：
-* golang非并发：49秒
-* golang并发：7秒
-* python非并发：35秒
-* python并发
+* golang非并发：62秒
+* python非并发：65秒
+* golang并发：25秒
+* python并发：16秒

@@ -38,7 +38,7 @@ func shouldEnterDir(p string) bool {
 func shouldEnterFile(p string) bool {
 	isCode := false
 	name := filepath.Base(p)
-	for _, lang := range strings.Fields(".py .go .java .js .cpp") {
+	for _, lang := range strings.Fields(".py .go .java .js .cpp .c .h .hpp .cs") {
 		if strings.HasSuffix(name, lang) {
 			isCode = true
 			break

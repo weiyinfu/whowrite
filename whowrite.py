@@ -10,6 +10,8 @@ from collections import Counter, defaultdict
 from os.path import *
 from typing import Callable
 import re
+from concurrent.futures import ThreadPoolExecutor
+import click
 
 
 def walk(path, should_enter: Callable):
@@ -38,28 +40,36 @@ def should_enter(folder):
     return True
 
 
-def main():
+def handle(filepath: str, a):
+    cmd = f"git blame {filepath}"
+    try:
+        resp = sp.check_output(cmd, shell=True)
+        resp = str(resp, encoding='utf8')
+    except Exception as ex:
+        print(ex, f'run command {cmd} error')
+        return
+    lines = resp.splitlines()
+    for line in lines:
+        fields = re.search('\((.+?)\)', line).group(1).split()
+        name = fields[0]
+        a[name] += 1
+
+
+def main(worker=15):
+    begin_time = time.time()
     a = defaultdict(lambda: 0)
-    for parent, folders, files in walk('.', should_enter):
-        for f in files:
-            if f.endswith('.py') or f.endswith('.go') or f.endswith('.js'):
-                filepath = join(parent, f)
-                cmd = f"git blame {filepath}"
-                try:
-                    resp = sp.check_output(cmd, shell=True)
-                    resp = str(resp, encoding='utf8')
-                except Exception as ex:
-                    print(ex, f'run command {cmd} error')
-                    continue
-                lines = resp.splitlines()
-                for line in lines:
-                    fields = re.search('\((.+?)\)', line).group(1).split()
-                    name = fields[0]
-                    a[name] += 1
+    with ThreadPoolExecutor(worker) as pool:
+        for parent, folders, files in walk('.', should_enter):
+            for f in files:
+                _, ext = splitext(basename(f))
+                if ext in ('.py', '.go', '.js', '.cs', '.cpp', '.c', '.cxx',):
+                    filepath = join(parent, f)
+                    pool.submit(handle, filepath, a)
+        pool.shutdown(True)
     pprint(a)
+    end_time = time.time()
+    print('Time used', end_time - begin_time)
 
 
-begin_time = time.time()
-main()
-end_time = time.time()
-print('Time used', end_time - begin_time)
+if __name__ == '__main__':
+    main()
