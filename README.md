@@ -22,29 +22,4 @@ go install
 * golang非并发：49秒
 * golang并发：7秒
 * python非并发：35秒
-
-
-# Java中执行命令并获取输出
-
-# Java执行命令并获取输出
-```plain
-public static String run(String cmd) {
-    try {
-        System.out.println(cmd);
-        Process process = Runtime.getRuntime().exec(cmd);
-        BufferedReader cin = new BufferedReader(new InputStreamReader(process.getInputStream(), Config.systemEncoding));
-        StringBuilder builder = new StringBuilder();
-        while (true) {
-            String s = cin.readLine();
-            if (s == null) break;
-            builder.append(s).append('\n');
-        }
-        process.waitFor();
-        System.out.println(builder.toString());
-        return builder.toString();
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
-    return null;
-}
-```
+* python并发
